@@ -8,16 +8,10 @@ import seaborn as sns
 # --- 🔍 [코드로만 한글 깨짐 방지 처리] ---
 @st.cache_resource
 def init_korean_font():
-    # 배포 서버(리눅스) 및 로컬 환경 시스템 폰트 점검 및 매핑
-    font_names = [f.name for f in fm.fontManager.ttflist]
-    if 'Malgun Gothic' in font_names:
-        plt.rcParams['font.family'] = 'Malgun Gothic'
-    elif 'NanumGothic' in font_names:
-        plt.rcParams['font.family'] = 'NanumGothic'
-    else:
-        # 배포 환경의 기본 폰트 대체 설정 적용
-        plt.rcParams['font.family'] = 'sans-serif'
-    
+    # 리눅스 배포 서버 환경에서 한글 깨짐을 방지하기 위해 기본 고딕 서체를 강제 매핑합니다.
+    plt.rcParams['font.family'] = 'sans-serif'
+    # sans-serif 폰트 그룹의 최우선 순위로 한글 지원 폰트들을 선언합니다.
+    plt.rcParams['font.sans-serif'] = ['Malgun Gothic', 'NanumGothic', 'DejaVu Sans', 'Arial']
     plt.rcParams['axes.unicode_minus'] = False  # 마이너스 기호 깨짐 방지
 
 init_korean_font()
@@ -67,4 +61,16 @@ if st.button("예측하기", type="primary"):
         )
         
         # 스케일링 및 모델 예측
-        new_
+        new_patient_scaled = scaler.transform(new_patient)
+        pred_cluster = model.predict(new_patient_scaled)
+        
+        # 🎯 결과 텍스트 출력
+        st.subheader("🎯 예측 결과")
+        st.success(f"이 환자는 **{pred_cluster[0]}번 군집**에 속합니다.")
+        
+        st.divider()
+        
+        # 📊 원래 그래프 출력 영역
+        st.subheader("📈 환자 군집 내 신규 환자 위치")
+        
+        fig, ax = plt.subplots(figsize=(8, 6))
