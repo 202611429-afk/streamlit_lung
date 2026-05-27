@@ -2,7 +2,9 @@ import streamlit as st
 import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm  # 폰트 관리를 위해 추가
 import seaborn as sns
+import os
 
 # --- 1. 모델, 스케일러 및 데이터셋 불러오기 ---
 @st.cache_resource
@@ -18,9 +20,20 @@ def load_models_and_data():
 
 scaler, model, df = load_models_and_data()
 
-# 한글 깨짐 방지 설정
-plt.rcParams['font.family'] = 'Malgun Gothic'
-plt.rcParams['axes.unicode_minus'] = False
+# 🔥 [한글 깨짐 방지 핵심 코드 추가] ---
+# 작업 폴더 내에 저장된 NanumGothic.ttf 경로를 잡습니다.
+font_path = os.path.join(os.path.dirname(__file__), "NanumGothic.ttf")
+
+if os.path.exists(font_path):
+    # 서버 환경(배포용): 파일이 있으면 해당 나눔폰트 적용
+    font_prop = fm.FontProperties(fname=font_path)
+    plt.rcParams['font.family'] = font_prop.get_name()
+else:
+    # 로컬 환경(컴퓨터 테스트용): 파일이 없으면 PC에 기본 내장된 맑은 고딕 적용
+    plt.rcParams['font.family'] = 'Malgun Gothic'
+
+plt.rcParams['axes.unicode_minus'] = False  # 마이너스 기호가 깨지는 현상 방지
+
 
 # --- 2. 웹 UI 구성 ---
 st.set_page_config(page_title="환자 군집 예측 시스템", page_icon="🏥", layout="centered")
@@ -63,7 +76,6 @@ if st.button("예측하기", type="primary"):
         
         fig, ax = plt.subplots(figsize=(8, 6))
         
-        # ⚠️ 에러 났던 try문 내부 들여쓰기를 완벽하게 정렬했습니다.
         try:
             # 원본 데이터에 실시간으로 군집 정보를 계산해 채워 넣음
             df_features = df[['나이', '흡연량', '음주량']]
