@@ -2,9 +2,26 @@ import streamlit as st
 import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm  # 폰트 관리를 위해 추가
+import matplotlib.font_manager as fm
 import seaborn as sns
-import os
+
+# --- [코드로만 한글 깨짐 방지 처리] ---
+# 1. Matplotlib 내부 폰트 캐시를 한 번 비워 배포 서버가 새로 설치된 폰트를 인식하게 합니다.
+fm._rebuild() if hasattr(fm, '_rebuild') else None
+
+# 2. 리눅스 서버에 설치된 나눔고딕이나 시스템 한글 폰트를 자동으로 매핑합니다.
+# 로컬(맑은고딕)과 배포 서버(나눔고딕, DejaVu) 환경을 모두 방어합니다.
+font_list = [f.name for f in fm.fontManager.ttflist]
+if 'NanumGothic' in font_list:
+    plt.rcParams['font.family'] = 'NanumGothic'
+elif 'Malgun Gothic' in font_list:
+    plt.rcParams['font.family'] = 'Malgun Gothic'
+else:
+    # 둘 다 없을 경우 리눅스 기본 고딕 스타일 지정
+    plt.rcParams['font.family'] = 'DejaVu Sans'
+
+plt.rcParams['axes.unicode_minus'] = False  # 마이너스 기호 깨짐 방지
+
 
 # --- 1. 모델, 스케일러 및 데이터셋 불러오기 ---
 @st.cache_resource
@@ -20,20 +37,6 @@ def load_models_and_data():
 
 scaler, model, df = load_models_and_data()
 
-# 🔥 [한글 깨짐 방지 핵심 코드 추가] ---
-# 작업 폴더 내에 저장된 NanumGothic.ttf 경로를 잡습니다.
-font_path = os.path.join(os.path.dirname(__file__), "NanumGothic.ttf")
-
-if os.path.exists(font_path):
-    # 서버 환경(배포용): 파일이 있으면 해당 나눔폰트 적용
-    font_prop = fm.FontProperties(fname=font_path)
-    plt.rcParams['font.family'] = font_prop.get_name()
-else:
-    # 로컬 환경(컴퓨터 테스트용): 파일이 없으면 PC에 기본 내장된 맑은 고딕 적용
-    plt.rcParams['font.family'] = 'Malgun Gothic'
-
-plt.rcParams['axes.unicode_minus'] = False  # 마이너스 기호가 깨지는 현상 방지
-
 
 # --- 2. 웹 UI 구성 ---
 st.set_page_config(page_title="환자 군집 예측 시스템", page_icon="🏥", layout="centered")
@@ -41,6 +44,7 @@ st.title("🏥 폐암환자 데이터 군집 예측")
 st.write("나이, 흡연량, 음주량을 입력하여 환자의 군집(Cluster)을 확인하고 위치를 시각화합니다.")
 
 st.divider()
+
 
 # --- 3. 사용자 데이터 입력 (입력 위젯) ---
 col1, col2, col3 = st.columns(3)
@@ -51,6 +55,7 @@ with col2:
     smoking_val = st.number_input("흡연량 입력", min_value=0.0, value=0.0, step=0.1)
 with col3:
     drinking_val = st.number_input("음주량 입력", min_value=0.0, value=0.0, step=0.1)
+
 
 # --- 4. 예측 및 시각화 실행 ---
 if st.button("예측하기", type="primary"):
