@@ -2,26 +2,7 @@ import streamlit as st
 import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm
 import seaborn as sns
-
-# --- [코드로만 한글 깨짐 방지 처리] ---
-# 1. Matplotlib 내부 폰트 캐시를 한 번 비워 배포 서버가 새로 설치된 폰트를 인식하게 합니다.
-fm._rebuild() if hasattr(fm, '_rebuild') else None
-
-# 2. 리눅스 서버에 설치된 나눔고딕이나 시스템 한글 폰트를 자동으로 매핑합니다.
-# 로컬(맑은고딕)과 배포 서버(나눔고딕, DejaVu) 환경을 모두 방어합니다.
-font_list = [f.name for f in fm.fontManager.ttflist]
-if 'NanumGothic' in font_list:
-    plt.rcParams['font.family'] = 'NanumGothic'
-elif 'Malgun Gothic' in font_list:
-    plt.rcParams['font.family'] = 'Malgun Gothic'
-else:
-    # 둘 다 없을 경우 리눅스 기본 고딕 스타일 지정
-    plt.rcParams['font.family'] = 'DejaVu Sans'
-
-plt.rcParams['axes.unicode_minus'] = False  # 마이너스 기호 깨짐 방지
-
 
 # --- 1. 모델, 스케일러 및 데이터셋 불러오기 ---
 @st.cache_resource
@@ -76,13 +57,13 @@ if st.button("예측하기", type="primary"):
         
         st.divider()
         
-        # 📊 원래 그래프 출력
+        # 📊 원래 그래프 출력 영역
         st.subheader("📈 환자 군집 내 신규 환자 위치")
         
+        # 🔥 [핵심 수정] 그래프 내부에 한글을 쓰지 않고 영문/숫자로만 채워 깨짐을 원천 차단합니다.
         fig, ax = plt.subplots(figsize=(8, 6))
         
         try:
-            # 원본 데이터에 실시간으로 군집 정보를 계산해 채워 넣음
             df_features = df[['나이', '흡연량', '음주량']]
             df_scaled = scaler.transform(df_features)
             df['cluster'] = model.predict(df_scaled)
@@ -94,21 +75,25 @@ if st.button("예측하기", type="primary"):
                 alpha=0.5, s=80, ax=ax, edgecolor='none'
             )
         except Exception as e:
-            # 예외 발생 시 안전 장치
             sns.scatterplot(data=df, x='나이', y='흡연량', color='skyblue', alpha=0.5, ax=ax)
             
         # 2. 새 환자 표시 강조 (zorder=5로 설정하여 최상단 배치)
-        ax.scatter(age_val, smoking_val, color='black', marker='X', s=350, linewidths=4, label='신규 환자 위치', zorder=5)
+        ax.scatter(age_val, smoking_val, color='black', marker='X', s=350, linewidths=4, label='New Patient', zorder=5)
         
-        # 원래 축 이름 지정 반영
-        ax.set_title("나이 및 흡연량에 따른 환자 분포", fontsize=14, pad=15)
-        ax.set_xlabel("나이", fontsize=12)
-        ax.set_ylabel("흡연량", fontsize=12)
+        # 축 레이블과 범례 타이틀을 임시 영문으로 세팅 (깨짐 방지)
+        ax.set_xlabel("Age", fontsize=12)
+        ax.set_ylabel("Smoking", fontsize=12)
         ax.grid(True, linestyle='--', alpha=0.5)
         
-        # 범례 갱신
         handles, labels = ax.get_legend_handles_labels()
-        ax.legend(handles=handles, labels=labels, title="환자 분류/위치")
+        # 범례 레이블 이름 가독성 정돈
+        clean_labels = [f"Cluster {l}" if l.isdigit() else "New Patient" for l in labels]
+        ax.legend(handles=handles, labels=clean_labels, title="Classification")
+        
+        # 💡 [꿀팁] 대신 그래프 바로 위에 깔끔한 Streamlit 마크다운 제목과 
+        # 축 설명을 한글로 배치하여 완벽한 시각적 효과를 냅니다.
+        st.markdown("#### 📍 나이 및 흡연량에 따른 환자 분포 그래프")
+        st.caption("※ 가로축(X): 나이 / 세로축(Y): 흡연량")
         
         # Streamlit 화면에 띄우기
         st.pyplot(fig)
