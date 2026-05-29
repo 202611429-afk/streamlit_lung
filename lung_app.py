@@ -4,14 +4,31 @@ import joblib
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 import seaborn as sns
+import urllib.request
+import os
 
-# --- 🔍 [코드로만 한글 깨짐 방지 처리] ---
+# --- 🔍 [코드로만 한글 깨짐 방지: 서버 자동 다운로드 방식] ---
 @st.cache_resource
 def init_korean_font():
-    # 리눅스 배포 서버 환경에서 한글 깨짐을 방지하기 위해 기본 고딕 서체를 강제 매핑합니다.
-    plt.rcParams['font.family'] = 'sans-serif'
-    # sans-serif 폰트 그룹의 최우선 순위로 한글 지원 폰트들을 선언합니다.
-    plt.rcParams['font.sans-serif'] = ['Malgun Gothic', 'NanumGothic', 'DejaVu Sans', 'Arial']
+    # 1. 다운로드할 나눔고딕 폰트의 웹 주소와 저장할 파일명 설정
+    font_url = "https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Regular.ttf"
+    font_filename = "NanumGothic.ttf"
+    
+    # 2. 서버 내에 폰트 파일이 없으면 코드가 직접 다운로드 실행
+    if not os.path.exists(font_filename):
+        try:
+            urllib.request.urlretrieve(font_url, font_filename)
+        except Exception as e:
+            pass
+            
+    # 3. 다운로드한 폰트 파일을 Matplotlib에 강제로 등록 및 우선순위 지정
+    if os.path.exists(font_filename):
+        fm.fontManager.addfont(font_filename)
+        prop = fm.FontProperties(fname=font_filename)
+        plt.rcParams['font.family'] = prop.get_name()
+    else:
+        plt.rcParams['font.family'] = 'sans-serif'
+        
     plt.rcParams['axes.unicode_minus'] = False  # 마이너스 기호 깨짐 방지
 
 init_korean_font()
@@ -92,13 +109,13 @@ if st.button("예측하기", type="primary"):
         # 2. 새 환자 표시 강조 (zorder=5로 설정하여 최상단 배치)
         ax.scatter(age_val, smoking_val, color='black', marker='X', s=350, linewidths=4, label='신규 환자 위치', zorder=5)
         
-        # 🇰🇷 그래프 내부 라벨 및 타이틀 한글화 설정
+        # 🇰🇷 그래프 내부 라벨 및 타이틀 완전히 한글로 지정
         ax.set_title("나이 및 흡연량에 따른 환자 분포 그래프", fontsize=14, pad=15)
         ax.set_xlabel("나이", fontsize=12)
         ax.set_ylabel("흡연량", fontsize=12)
         ax.grid(True, linestyle='--', alpha=0.5)
         
-        # 범례 추출 후 매칭하여 한글로 재정의
+        # 범례 한글 매핑 갱신
         handles, labels = ax.get_legend_handles_labels()
         clean_labels = [f"군집 {l}" if l.isdigit() else "신규 환자 위치" for l in labels]
         ax.legend(handles=handles, labels=clean_labels, title="환자 분류 / 위치", fontsize=10, title_fontsize=11)
