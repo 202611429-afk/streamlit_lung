@@ -74,3 +74,41 @@ if st.button("예측하기", type="primary"):
         st.subheader("📈 환자 군집 내 신규 환자 위치")
         
         fig, ax = plt.subplots(figsize=(8, 6))
+        
+        try:
+            df_features = df[['나이', '흡연량', '음주량']]
+            df_scaled = scaler.transform(df_features)
+            df['cluster'] = model.predict(df_scaled)
+            
+            # 원래 주피터의 선명한 색상 구성(viridis), 투명도(alpha=0.5) 반영
+            sns.scatterplot(
+                data=df, x='나이', y='흡연량', 
+                hue='cluster', palette='viridis', 
+                alpha=0.5, s=80, ax=ax, edgecolor='none'
+            )
+        except Exception as e:
+            sns.scatterplot(data=df, x='나이', y='흡연량', color='skyblue', alpha=0.5, ax=ax)
+            
+        # 2. 새 환자 표시 강조 (zorder=5로 설정하여 최상단 배치)
+        ax.scatter(age_val, smoking_val, color='black', marker='X', s=350, linewidths=4, label='신규 환자 위치', zorder=5)
+        
+        # 🇰🇷 그래프 내부 라벨 및 타이틀 한글화 설정
+        ax.set_title("나이 및 흡연량에 따른 환자 분포 그래프", fontsize=14, pad=15)
+        ax.set_xlabel("나이", fontsize=12)
+        ax.set_ylabel("흡연량", fontsize=12)
+        ax.grid(True, linestyle='--', alpha=0.5)
+        
+        # 범례 추출 후 매칭하여 한글로 재정의
+        handles, labels = ax.get_legend_handles_labels()
+        clean_labels = [f"군집 {l}" if l.isdigit() else "신규 환자 위치" for l in labels]
+        ax.legend(handles=handles, labels=clean_labels, title="환자 분류 / 위치", fontsize=10, title_fontsize=11)
+        
+        # Streamlit 화면에 그래프 반영
+        st.pyplot(fig)
+        
+    else:
+        st.error("필수 파일(모델, 스케일러, 혹은 원본 데이터 CSV)이 누락되었습니다. 경로와 파일명을 다시 확인해주세요.")
+
+
+# --- 하단 안내 ---
+st.caption("제작: 환자 데이터 분석 시스템")
